@@ -1,0 +1,2811 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>병원부 분리처 시퀀스별 진료과 확인 (25.12월 기준)</title>
+<style>
+  :root{
+    --navy:#0f2a4a; --navy-d:#0a1c33; --navy-l:#1c3a5e;
+    --gold:#b8860b; --gold-d:#8f6a08; --gold-bg:#f6ecd6;
+    --bg:#eef1f6; --card:#ffffff; --border:#e2e6ee;
+    --text:#1c2333; --muted:#6b7280;
+
+    --c-cen:#b8860b; --c-cen-bg:#fbf1dc;
+    --c-gad:#0f766e; --c-gad-bg:#e2f3f1;
+    --c-amr:#2451a3; --c-amr-bg:#e6ecf9;
+    --c-amr2:#7c3aed; --c-amr2-bg:#efe6fd;
+    --c-amr3:#be123c; --c-amr3-bg:#fbe4ea;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family:-apple-system,BlinkMacSystemFont,"Malgun Gothic","Apple SD Gothic Neo",sans-serif;
+    background:var(--bg); color:var(--text); padding-bottom:100px;
+  }
+  header{
+    background:linear-gradient(135deg, var(--navy) 0%, var(--navy-d) 100%);
+    color:#fff; padding:16px 16px 14px;
+    position:sticky; top:0; z-index:10; box-shadow:0 2px 10px rgba(0,0,0,.15);
+  }
+  header h1{margin:0; font-size:16.5px; font-weight:700; display:flex; align-items:center; gap:7px;}
+  header h1 .dot{color:var(--gold); font-size:13px;}
+  header p{margin:4px 0 0; font-size:12px; opacity:.75; padding-left:20px;}
+  .caption-bar{
+    background:#e2e6ee; color:var(--muted); font-size:11.5px; text-align:center;
+    padding:7px 10px; border-bottom:1px solid var(--border);
+  }
+  .caption-bar b{color:var(--navy);}
+  main{padding:14px;}
+
+  .section{margin-bottom:16px;}
+  .section-band{
+    display:flex; align-items:center; gap:8px;
+    background:var(--navy); color:#fff; font-size:13.5px; font-weight:700;
+    padding:11px 14px; border-radius:12px 12px 0 0;
+  }
+  .section-band .badge-num{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:20px; height:20px; border-radius:50%; background:var(--gold); color:#3a2a04;
+    font-size:11.5px; font-weight:800; flex:none;
+  }
+  .section-body{
+    background:var(--card); border:1px solid var(--border); border-top:none;
+    border-radius:0 0 12px 12px; padding:16px;
+  }
+
+  label{display:block; font-size:12.5px; color:var(--muted); margin:12px 0 5px; font-weight:600;}
+  label:first-of-type{margin-top:0;}
+  select, input[type=text]{
+    width:100%; padding:11px 12px; border-radius:10px; border:1px solid var(--border);
+    font-size:15px; background:#fafbfd; color:var(--text); appearance:none;
+  }
+  select:disabled, input:disabled{background:#f0f1f4; color:#aaa;}
+  .hint{font-size:11.5px; color:var(--muted); margin-top:5px;}
+
+  .stat-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:14px;}
+  .stat-card{
+    background:#fbfcfe; border:1px solid var(--border); border-radius:12px; padding:12px 14px;
+  }
+  .stat-card .stat-label{font-size:11px; color:var(--muted); font-weight:700; letter-spacing:.02em;}
+  .stat-card .stat-value{font-size:16px; font-weight:800; color:var(--navy); margin-top:4px; word-break:break-all;}
+  .stat-card.wait .stat-value{color:#c3c9d4; font-weight:600; font-size:13px;}
+
+  .placeholder{text-align:center; color:var(--muted); font-size:13px; padding:34px 10px;}
+
+  .seq-card{
+    border:1px solid var(--border); border-left:5px solid var(--grp-color, var(--navy));
+    border-radius:12px; margin-bottom:12px; overflow:hidden; background:#fff;
+  }
+  .seq-card.empty{opacity:.6;}
+  .seq-head{
+    display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;
+    padding:11px 13px; background:var(--grp-bg, #f4f6fa);
+  }
+  .seq-title{
+    font-weight:800; font-size:14.5px; color:var(--grp-color, var(--navy));
+    display:flex; align-items:center; gap:6px;
+  }
+  .seq-title .dept-count{
+    font-size:11px; font-weight:700; background:#fff; color:var(--grp-color, var(--navy));
+    border:1px solid currentColor; border-radius:20px; padding:1px 8px;
+  }
+  .status-pill{
+    font-size:11px; font-weight:700; padding:3px 9px; border-radius:20px; flex:none;
+  }
+  .status-pill.changed{background:#fff2d9; color:#8a5a00;}
+  .status-pill.same{background:#e6f4ea; color:#1e7a3d;}
+  .status-pill.none{background:#eceff3; color:#8992a3;}
+
+  .mgr-line{
+    font-size:12.5px; color:var(--muted); padding:9px 13px 4px; line-height:1.5;
+    border-bottom:1px dashed var(--border);
+  }
+  .mgr-line b{color:var(--text); font-weight:700;}
+  .mgr-arrow{color:#9ca3af; margin:0 5px;}
+
+  .dept-grid{display:grid; grid-template-columns:1fr 1fr; gap:6px; padding:11px 13px 13px;}
+  .dept-item{
+    display:flex; align-items:center; gap:6px; font-size:12.8px;
+    padding:8px 8px; border-radius:8px; border:1px solid var(--border); background:#fbfcfe;
+  }
+  .dept-item input{width:15px; height:15px; flex:none; accent-color:var(--grp-color, var(--navy));}
+  .dept-item.checked{
+    background:var(--grp-bg, #eff6ff); border-color:var(--grp-color, var(--navy));
+    font-weight:700; color:var(--grp-color, var(--navy));
+  }
+
+  footer{
+    position:fixed; bottom:0; left:0; right:0; background:#fff; border-top:1px solid var(--border);
+    padding:10px 14px calc(10px + env(safe-area-inset-bottom)); z-index:20;
+    box-shadow:0 -4px 14px rgba(0,0,0,.06);
+  }
+  #submitBtn{
+    width:100%; padding:14px; border:none; border-radius:12px;
+    background:linear-gradient(135deg, var(--navy) 0%, var(--navy-l) 100%);
+    color:#fff; font-size:15.5px; font-weight:700;
+  }
+  #submitBtn:disabled{background:#aab2c1;}
+  #status{font-size:12.5px; text-align:center; margin-top:6px; min-height:16px; font-weight:600;}
+  #status.ok{color:#15803d;}
+  #status.err{color:#dc2626;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1><span class="dot">●</span>병원부 분리처 시퀀스별 진료과 확인</h1>
+  <p>25년 12월 기준 · 시퀀스별 담당 진료과 취합 요청</p>
+</header>
+<div class="caption-bar">
+  총 <b>69</b>개 거래처 · <b>4</b>개 사업부 · <b>27</b>개 사무소 · 진료과 <b>22</b>개 (25.12월 기준 RAW/진료과 시트 반영)
+</div>
+
+<main>
+  <div class="section">
+    <div class="section-band"><span class="badge-num">1</span>거래처 조회</div>
+    <div class="section-body">
+      <label for="bu">사업부</label>
+      <select id="bu"><option value="">선택하세요</option></select>
+
+      <label for="office">사무소</label>
+      <select id="office" disabled><option value="">사업부를 먼저 선택하세요</option></select>
+
+      <label for="clientInput">거래처명</label>
+      <input type="text" id="clientInput" list="clientList" placeholder="사무소를 먼저 선택하세요" disabled autocomplete="off">
+      <datalist id="clientList"></datalist>
+      <div class="hint">거래처명을 선택하면 사업자번호·판매처코드가 자동으로 채워져요.</div>
+
+      <div class="stat-grid">
+        <div class="stat-card wait" id="bizNoCard">
+          <div class="stat-label">사업자번호</div>
+          <div class="stat-value" id="bizNoVal">거래처 선택 후 표시</div>
+        </div>
+        <div class="stat-card wait" id="salesCodeCard">
+          <div class="stat-label">판매처코드</div>
+          <div class="stat-value" id="salesCodeVal">거래처 선택 후 표시</div>
+        </div>
+      </div>
+
+      <label for="submitter">작성자</label>
+      <input type="text" id="submitter" placeholder="이름을 입력하세요">
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-band"><span class="badge-num">2</span>시퀀스별 담당 진료과 (중복선택)</div>
+    <div class="section-body">
+      <div id="seqContainer">
+        <div class="placeholder">거래처를 선택하면 시퀀스별 진료과 체크리스트가 표시됩니다.</div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <button id="submitBtn" disabled>제출하기</button>
+  <div id="status"></div>
+</footer>
+
+<script>
+/* =========================================================================
+   1) DATA — 업로드된 "병원부 분리처 현황_시퀀스별 진료과 확인 요청(25.12월기준)_260728.xlsx"
+      RAW 시트 + 진료과 시트 전체 데이터가 반영되어 있습니다.
+   ========================================================================= */
+const HOSPITALS = [
+  {
+    "bu": "서울1",
+    "office": "병원경인",
+    "name": "부천순천향대학교의과대학부속병원",
+    "bizNo": "1308212287",
+    "salesCode": "10033272",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "이용재",
+        "jun": "이용재"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "이승룡",
+        "jun": "이승룡"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "이승룡",
+        "jun": "이승룡"
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "서울1",
+    "office": "병원경인",
+    "name": "의료법인인봉의료재단뉴고려병원",
+    "bizNo": "1378206618",
+    "salesCode": "10033884",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "정창민",
+        "jun": "김문식"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "국경호",
+        "jun": "박상우"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "서울1",
+    "office": "병원서울1",
+    "name": "건국대학교병원",
+    "bizNo": "2078202115",
+    "salesCode": "10034781",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "송준석",
+        "jun": "공보성"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "김태완",
+        "jun": "김태완"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "서울1",
+    "office": "병원서울1",
+    "name": "서울아산병원",
+    "bizNo": "2198200046",
+    "salesCode": "10035376",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "서효조",
+        "jun": "서효조"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "홍지윤",
+        "jun": "홍지윤"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "권상훈",
+        "jun": "권상훈"
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "김병우",
+        "jun": "김병우"
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "주병용",
+        "jun": "최준석"
+      }
+    }
+  },
+  {
+    "bu": "서울1",
+    "office": "병원서울2",
+    "name": "분당서울대학교병원",
+    "bizNo": "1298206989",
+    "salesCode": "10033165",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "조진한",
+        "jun": "김용민"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "이인석",
+        "jun": "이인석"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "정재환",
+        "jun": "이원빈"
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "김용민",
+        "jun": "박현진"
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "서울1",
+    "office": "병원서울3",
+    "name": "연세의료원",
+    "bizNo": "1108200472",
+    "salesCode": "10012184",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "노성우",
+        "jun": "노성우"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "안희범",
+        "jun": "권오현"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "최우성",
+        "jun": "최우성"
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "이태진",
+        "jun": "이태진"
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "정민형",
+        "jun": "정민형"
+      }
+    }
+  },
+  {
+    "bu": "서울1",
+    "office": "병원서울4",
+    "name": "고대구로병원",
+    "bizNo": "1138201994",
+    "salesCode": "10031911",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "김선호",
+        "jun": "김선호"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "유재준",
+        "jun": "유재준"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "유재준",
+        "jun": "유재준"
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "서울1",
+    "office": "병원서울4",
+    "name": "이대목동병원",
+    "bizNo": "1178201074",
+    "salesCode": "10032050",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "김정윤",
+        "jun": "김정윤"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "김정윤",
+        "jun": "김정윤"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "김유리",
+        "jun": "최민준"
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "서울1",
+    "office": "병원서울4",
+    "name": "이화의대부속서울병원",
+    "bizNo": "3668200250",
+    "salesCode": "10037290",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "김정윤",
+        "jun": "김정윤"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "주민규",
+        "jun": "주민규"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "김유리",
+        "jun": "최민준"
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "서울1",
+    "office": "병원서울5",
+    "name": "평촌성심병원",
+    "bizNo": "1388202667",
+    "salesCode": "10020451",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "양재현",
+        "jun": "양재현"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "최연후",
+        "jun": "최연후"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "양재현",
+        "jun": "양재현"
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "서울1",
+    "office": "병원서울5",
+    "name": "분당차병원",
+    "bizNo": "1298203681",
+    "salesCode": "10033158",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "임윤택",
+        "jun": "임윤택"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "정동웅",
+        "jun": "정동웅"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "",
+        "jun": "고준원"
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "서울1",
+    "office": "병원서울5",
+    "name": "중앙대학교광명병원",
+    "bizNo": "1538200538",
+    "salesCode": "10074449",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "이동성",
+        "jun": "이동성"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "최성철",
+        "jun": "최성철"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "최성철",
+        "jun": "최성철"
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "서울1",
+    "office": "병원인천",
+    "name": "가톨릭대학교인천성모병원인천성모병원",
+    "bizNo": "1228200887",
+    "salesCode": "10032375",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "나천",
+        "jun": "나천"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "민현기",
+        "jun": "민현기"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "나천",
+        "jun": "나천"
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "서울1",
+    "office": "병원인천",
+    "name": "길병원",
+    "bizNo": "1398200376",
+    "salesCode": "10033992",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "이정효",
+        "jun": "이정효"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "김종익",
+        "jun": "김종익"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "홍지훈",
+        "jun": "홍지훈"
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "서울1",
+    "office": "병원인천",
+    "name": "인하대학교",
+    "bizNo": "1218207529",
+    "salesCode": "10019902",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "양명진",
+        "jun": "양명진"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "김형태",
+        "jun": "김형태"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "김형태",
+        "jun": "김형태"
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "서울1",
+    "office": "병원인천",
+    "name": "국제성모병원",
+    "bizNo": "1378209745",
+    "salesCode": "10033888",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "김형태",
+        "jun": "김형태"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "홍지훈",
+        "jun": "홍지훈"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "서울1",
+    "office": "병원인천",
+    "name": "인천세종병원",
+    "bizNo": "6018210030",
+    "salesCode": "10040431",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "이정효",
+        "jun": "이정효"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "김종익",
+        "jun": "김종익"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "서울2",
+    "office": "병원경기1",
+    "name": "고대안산병원",
+    "bizNo": "1348200522",
+    "salesCode": "10033607",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "윤두현",
+        "jun": "공동호"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "장철희",
+        "jun": "공동호"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "윤두현",
+        "jun": "공동호"
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "서울2",
+    "office": "병원경기1",
+    "name": "가톨릭대학교성빈센트병원",
+    "bizNo": "1358200092",
+    "salesCode": "10033723",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "유찬형",
+        "jun": "유찬형"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "류현민",
+        "jun": "이재빈"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "유찬형",
+        "jun": "유찬형"
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "서울2",
+    "office": "병원경기1",
+    "name": "아주대학교의료원",
+    "bizNo": "1248206965",
+    "salesCode": "10032609",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "황익태",
+        "jun": "황익태"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "윤석민",
+        "jun": "윤석민"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "황익태",
+        "jun": "홍지민"
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "서울2",
+    "office": "병원경기2",
+    "name": "학)연세의대용인세브란스병원",
+    "bizNo": "1358200904",
+    "salesCode": "10033727",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "최종인",
+        "jun": "최종인"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "마기원",
+        "jun": "마기원"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "서울2",
+    "office": "병원남부1",
+    "name": "여의도성모병원",
+    "bizNo": "1168202162",
+    "salesCode": "10015540",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "황성빈",
+        "jun": "한재현"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "황성빈",
+        "jun": "한재현"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "현정호",
+        "jun": "현정호"
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "서울2",
+    "office": "병원남부1",
+    "name": "중앙의료원흑석동병원",
+    "bizNo": "2038203581",
+    "salesCode": "10034517",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "이광현",
+        "jun": "김민한"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "김한봄",
+        "jun": "김한봄"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "서울2",
+    "office": "병원남부1",
+    "name": "강남성심병원",
+    "bizNo": "1188200457",
+    "salesCode": "10032080",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "현정호",
+        "jun": "현정호"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "이광현",
+        "jun": "김민한"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "서울2",
+    "office": "병원남부1",
+    "name": "(학)가톨릭대학교서울성모병원",
+    "bizNo": "1148200213",
+    "salesCode": "10031960",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "임경섭",
+        "jun": "임경섭"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "김상현",
+        "jun": "김상현"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "임경섭",
+        "jun": "임경섭"
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "김상현",
+        "jun": "김상현"
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "서울2",
+    "office": "병원남부2",
+    "name": "삼성서울병원",
+    "bizNo": "2138205096",
+    "salesCode": "10035113",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "정구민",
+        "jun": "정구민"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "박상철",
+        "jun": "박상철"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "송우솔",
+        "jun": "송우솔"
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "유남준",
+        "jun": "유남준"
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "서울2",
+    "office": "병원남부2",
+    "name": "강남세브란스병원",
+    "bizNo": "2138200602",
+    "salesCode": "10011052",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "이대명",
+        "jun": "이대명"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "이정원",
+        "jun": "이정원"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "이대명",
+        "jun": "이대명"
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "서울2",
+    "office": "병원동부",
+    "name": "한양대학교병원",
+    "bizNo": "2068201898",
+    "salesCode": "10034735",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "김태인",
+        "jun": "김태인"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "이선구",
+        "jun": "이선구"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "서울2",
+    "office": "병원동부",
+    "name": "경희의료원",
+    "bizNo": "2058202424",
+    "salesCode": "10034665",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "공명",
+        "jun": ""
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "공명",
+        "jun": "공명"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "박이철",
+        "jun": "임창희"
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "서울2",
+    "office": "병원북부",
+    "name": "고대안암병원",
+    "bizNo": "2098204249",
+    "salesCode": "10034861",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "김용호",
+        "jun": "김용호"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "우동균",
+        "jun": "우동균"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "김용호",
+        "jun": "김용호"
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "서울2",
+    "office": "병원중부1",
+    "name": "강북삼성병원",
+    "bizNo": "1108202349",
+    "salesCode": "10031781",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "신광호",
+        "jun": "신광호"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "신현우",
+        "jun": "신현우"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "남규진",
+        "jun": "남규진"
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "남규진",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "서울2",
+    "office": "병원중부1",
+    "name": "서울대병원",
+    "bizNo": "2088201633",
+    "salesCode": "10006513",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "배중환",
+        "jun": "배중환"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "신광호",
+        "jun": "신광호"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "박성호",
+        "jun": "박성호"
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "남규진",
+        "jun": "박용범"
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "이재훈",
+        "jun": "박용범"
+      }
+    }
+  },
+  {
+    "bu": "서울2",
+    "office": "병원중부2",
+    "name": "서울보라매병원",
+    "bizNo": "1188300186",
+    "salesCode": "10017023",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "김경열",
+        "jun": "김경열"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "홍진우",
+        "jun": "홍진우"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "지방1",
+    "office": "병원경남1",
+    "name": "창원파티마병원",
+    "bizNo": "6088201416",
+    "salesCode": "10040911",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "류진우",
+        "jun": "류진우"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "장홍경",
+        "jun": "장홍경"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "지방1",
+    "office": "병원경남1",
+    "name": "삼성창원병원",
+    "bizNo": "6088214527",
+    "salesCode": "10040936",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "정성훈",
+        "jun": "정성훈"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "정성훈",
+        "jun": "정성훈"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "허재원",
+        "jun": "허재원"
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "허재원",
+        "jun": "윤성현"
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "허재원",
+        "jun": "허재원"
+      }
+    }
+  },
+  {
+    "bu": "지방1",
+    "office": "병원경남2",
+    "name": "경상대학부속병원",
+    "bizNo": "6138205753",
+    "salesCode": "10041314",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "정승지",
+        "jun": "정승지"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "권수상",
+        "jun": "권수상"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "권수상",
+        "jun": "권수상"
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "지방1",
+    "office": "병원경남2",
+    "name": "창원경상대학교병원",
+    "bizNo": "4138203626",
+    "salesCode": "10038406",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "정철훈",
+        "jun": "정예진"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "장홍경",
+        "jun": "장홍경"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "장홍경",
+        "jun": "장홍경"
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "지방1",
+    "office": "병원대구1",
+    "name": "안동종합병원",
+    "bizNo": "5088201339",
+    "salesCode": "10039639",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "황영준",
+        "jun": "최인석"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "권근륜",
+        "jun": "권근륜"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "지방1",
+    "office": "병원대구1",
+    "name": "영남대학부속병원",
+    "bizNo": "5148202221",
+    "salesCode": "10039900",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "권남윤",
+        "jun": "노현령"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "김교신",
+        "jun": "조해찬"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "김교신",
+        "jun": "조해찬"
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "지방1",
+    "office": "병원대구1",
+    "name": "경북대학교병원",
+    "bizNo": "5018206653",
+    "salesCode": "10008285",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "황진선",
+        "jun": "황영준"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "황영준",
+        "jun": "최인석"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "황영준",
+        "jun": "최인석"
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "황영준",
+        "jun": "최인석"
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "지방1",
+    "office": "병원대구2",
+    "name": "계명대동산의료원",
+    "bizNo": "5018203466",
+    "salesCode": "10003084",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "오명욱",
+        "jun": "오명욱"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "손재우",
+        "jun": "손재우"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "손재우",
+        "jun": "손재우"
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "지방1",
+    "office": "병원대구2",
+    "name": "대구파티마병원",
+    "bizNo": "5028200818",
+    "salesCode": "10039205",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "이지홍",
+        "jun": "이지홍"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "오명욱",
+        "jun": "오명욱"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "오명욱",
+        "jun": "오명욱"
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "지방1",
+    "office": "병원대구2",
+    "name": "카톨릭병원",
+    "bizNo": "5148204710",
+    "salesCode": "10039905",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "김혜원",
+        "jun": "김혜원"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "양기호",
+        "jun": "기동아"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "김혜원",
+        "jun": "김혜원"
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "지방1",
+    "office": "병원부산1",
+    "name": "양산부산대학교병원",
+    "bizNo": "6218210067",
+    "salesCode": "10041842",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "전종명",
+        "jun": "전종명"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "이창훈",
+        "jun": "정철훈"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "이창훈",
+        "jun": "정철훈"
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "지방1",
+    "office": "병원부산1",
+    "name": "부산백병원",
+    "bizNo": "6058202148",
+    "salesCode": "10040635",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "김주영",
+        "jun": "김주영"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "박큰솔",
+        "jun": "박큰솔"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "김주영",
+        "jun": "김주영"
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "지방1",
+    "office": "병원부산1",
+    "name": "동아대부속병원",
+    "bizNo": "6038203952",
+    "salesCode": "10040523",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "정원종",
+        "jun": "정원종"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "박대협",
+        "jun": "박대협"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "박대협",
+        "jun": "박대협"
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "지방1",
+    "office": "병원부산1",
+    "name": "인제대학교해운대백병원",
+    "bizNo": "6178208373",
+    "salesCode": "10041601",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "박대협",
+        "jun": "박대협"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "이승헌",
+        "jun": "이승헌"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "박대협",
+        "jun": "박대협"
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "지방1",
+    "office": "병원부산2",
+    "name": "(의)동강의료재단",
+    "bizNo": "6208200912",
+    "salesCode": "10041737",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "박동욱",
+        "jun": "박동욱"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "전경진",
+        "jun": "전경진"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "지방1",
+    "office": "병원부산2",
+    "name": "울산대병원",
+    "bizNo": "6208203414",
+    "salesCode": "10041742",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "손찬모",
+        "jun": "변정호"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "박동욱",
+        "jun": "박동욱"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "황지현",
+        "jun": "이준원"
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "지방1",
+    "office": "병원부산2",
+    "name": "부산대학병원",
+    "bizNo": "6038204892",
+    "salesCode": "10040526",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "구민수",
+        "jun": "구민수"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "손찬모",
+        "jun": "변정호"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "이도엽",
+        "jun": "이도엽"
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "지방1",
+    "office": "병원부산2",
+    "name": "비에이치에스한서병원",
+    "bizNo": "6178205191",
+    "salesCode": "10041592",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "임지훈",
+        "jun": "임지훈"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "박동욱",
+        "jun": "박동욱"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "지방1",
+    "office": "병원부산3",
+    "name": "고신대학교복음병원",
+    "bizNo": "6038201615",
+    "salesCode": "10003505",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "박규태",
+        "jun": "박규태"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "김수민",
+        "jun": "김수민"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "지방1",
+    "office": "병원부산3",
+    "name": "의료법인정화의료재단",
+    "bizNo": "6048203917",
+    "salesCode": "10040582",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "박규태",
+        "jun": "박규태"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "김윤재",
+        "jun": "김윤재"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "지방2",
+    "office": "병원광주1",
+    "name": "성가롤로병원",
+    "bizNo": "4168201331",
+    "salesCode": "10002945",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "이용선",
+        "jun": "이용선"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "황원주",
+        "jun": "황원주"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "지방2",
+    "office": "병원광주1",
+    "name": "화순전남대학교병원",
+    "bizNo": "4088213350",
+    "salesCode": "10037919",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "황원주",
+        "jun": "황원주"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "조현준",
+        "jun": "조현준"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "조현준",
+        "jun": "조현준"
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "지방2",
+    "office": "병원광주1",
+    "name": "전남대부속병원",
+    "bizNo": "4088208124",
+    "salesCode": "10037916",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "김탄",
+        "jun": "정지영"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "김재인",
+        "jun": "김재인"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "조현준",
+        "jun": "조현준"
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "지방2",
+    "office": "병원광주2",
+    "name": "광주기독병원",
+    "bizNo": "4108200687",
+    "salesCode": "10038193",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "주병옥",
+        "jun": "주병옥"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "최송이",
+        "jun": "최송이"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "지방2",
+    "office": "병원광주2",
+    "name": "조선대학교병원",
+    "bizNo": "4088202644",
+    "salesCode": "10037912",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "김치옥",
+        "jun": "김치옥"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "서선열",
+        "jun": "서선열"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "지방2",
+    "office": "병원대전",
+    "name": "대전을지병원",
+    "bizNo": "3058203359",
+    "salesCode": "10036369",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "이상훈",
+        "jun": "이상훈"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "남상국",
+        "jun": "남상국"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "지방2",
+    "office": "병원대전",
+    "name": "충남대병원",
+    "bizNo": "3058208811",
+    "salesCode": "10036378",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "임혁",
+        "jun": "임혁"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "정지우",
+        "jun": "정지우"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "정지우",
+        "jun": "정지우"
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "정지우",
+        "jun": "정지우"
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "지방2",
+    "office": "병원대전",
+    "name": "건양대학교병원",
+    "bizNo": "3148206307",
+    "salesCode": "10036867",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "김철우",
+        "jun": "김철우"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "김종현",
+        "jun": "김종현"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "지방2",
+    "office": "병원전주",
+    "name": "원광대학교병원",
+    "bizNo": "4038202289",
+    "salesCode": "10037680",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "하완석",
+        "jun": "하완석"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "전창규",
+        "jun": "전창규"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "하완석",
+        "jun": "하완석"
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "하완석",
+        "jun": "하완석"
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "지방2",
+    "office": "병원전주",
+    "name": "예수병원유지재단",
+    "bizNo": "4028200712",
+    "salesCode": "10037576",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "박종인",
+        "jun": "박종인"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "최대우",
+        "jun": "최대우"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "최대우",
+        "jun": "최대우"
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "박종인",
+        "jun": "박종인"
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "박종인",
+        "jun": "박종인"
+      }
+    }
+  },
+  {
+    "bu": "지방2",
+    "office": "병원전주",
+    "name": "전북대학교병원",
+    "bizNo": "4188203771",
+    "salesCode": "10038647",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "황민이",
+        "jun": "황민이"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "박지산",
+        "jun": "박지산"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "황민이",
+        "jun": "황민이"
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "박지산",
+        "jun": "박지산"
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "지방2",
+    "office": "병원전주",
+    "name": "대자인병원",
+    "bizNo": "4180843910",
+    "salesCode": "10002973",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "황민이",
+        "jun": "황민이"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "박종인",
+        "jun": "박종인"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "지방2",
+    "office": "병원청주",
+    "name": "의료법인 해담의료재단(나은병원)",
+    "bizNo": "4788200081",
+    "salesCode": "10050007",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "한재우",
+        "jun": "한재우"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "이진구",
+        "jun": "이진구"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "이진구",
+        "jun": "이진구"
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "지방2",
+    "office": "병원청주",
+    "name": "단국대병원",
+    "bizNo": "3128204278",
+    "salesCode": "10036706",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "차재형",
+        "jun": "차재형"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "이진구",
+        "jun": "이진구"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "차재형",
+        "jun": "차재형"
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "지방2",
+    "office": "병원청주",
+    "name": "순천향천안병원",
+    "bizNo": "3128213705",
+    "salesCode": "10036713",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "안치형",
+        "jun": "안치형"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "김경석",
+        "jun": "김경석"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "안치형",
+        "jun": "안치형"
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  },
+  {
+    "bu": "지방2",
+    "office": "병원청주",
+    "name": "충북대학교병원",
+    "bizNo": "3158203375",
+    "salesCode": "10036958",
+    "seq": {
+      "CEN": {
+        "no": "901",
+        "dec": "박지우",
+        "jun": "박지우"
+      },
+      "GAD": {
+        "no": "902",
+        "dec": "황수경",
+        "jun": "황수경"
+      },
+      "AMR": {
+        "no": "903",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR2": {
+        "no": "904",
+        "dec": "",
+        "jun": ""
+      },
+      "AMR3": {
+        "no": "905",
+        "dec": "",
+        "jun": ""
+      }
+    }
+  }
+];
+
+const DEPARTMENTS = [
+  "내분비대사내과",
+  "순환기내과(심장내과)",
+  "신장내과",
+  "소화기내과",
+  "호흡기내과",
+  "알레르기내과",
+  "류마티스내과",
+  "혈액종양내과",
+  "감염내과",
+  "신경과",
+  "신경외과",
+  "정신건강의학과",
+  "가정의학과",
+  "정형외과",
+  "이비인후과",
+  "소아청소년과",
+  "피부과",
+  "비뇨의학과",
+  "안과",
+  "산부인과",
+  "재활의학과",
+  "마취통증의학과"
+];
+
+const SEQ_GROUPS = ["CEN", "GAD", "AMR", "AMR2", "AMR3"];
+const GROUP_COLOR = {
+  CEN:  { color: "var(--c-cen)",  bg: "var(--c-cen-bg)"  },
+  GAD:  { color: "var(--c-gad)",  bg: "var(--c-gad-bg)"  },
+  AMR:  { color: "var(--c-amr)",  bg: "var(--c-amr-bg)"  },
+  AMR2: { color: "var(--c-amr2)", bg: "var(--c-amr2-bg)" },
+  AMR3: { color: "var(--c-amr3)", bg: "var(--c-amr3-bg)" }
+};
+
+/* =========================================================================
+   2) 제출 대상 Google Apps Script 웹앱 URL — 배포 후 여기에 넣으세요.
+   ========================================================================= */
+const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz7nq4jGPRYV_H-fpUivOEVDN0_LGBw4rFnw3_7r1YP28U0fdh8FZlN2Oj0rdsVCmMFWQ/exec";
+
+/* ========================================================================= */
+
+const buEl = document.getElementById('bu');
+const officeEl = document.getElementById('office');
+const clientInput = document.getElementById('clientInput');
+const clientList = document.getElementById('clientList');
+const bizNoCard = document.getElementById('bizNoCard');
+const salesCodeCard = document.getElementById('salesCodeCard');
+const bizNoVal = document.getElementById('bizNoVal');
+const salesCodeVal = document.getElementById('salesCodeVal');
+const seqContainer = document.getElementById('seqContainer');
+const submitBtn = document.getElementById('submitBtn');
+const statusEl = document.getElementById('status');
+const submitterEl = document.getElementById('submitter');
+
+let selectedHospital = null;
+let checkedDepts = {}; // { CEN: Set(...), GAD: Set(...), ... }
+
+function uniq(arr){ return [...new Set(arr)]; }
+
+function initBu(){
+  uniq(HOSPITALS.map(h => h.bu)).sort().forEach(bu => {
+    const opt = document.createElement('option');
+    opt.value = bu; opt.textContent = bu;
+    buEl.appendChild(opt);
+  });
+}
+
+function resetClientArea(){
+  selectedHospital = null;
+  bizNoVal.textContent = "거래처 선택 후 표시";
+  salesCodeVal.textContent = "거래처 선택 후 표시";
+  bizNoCard.classList.add('wait'); salesCodeCard.classList.add('wait');
+  seqContainer.innerHTML = '<div class="placeholder">거래처를 선택하면 시퀀스별 진료과 체크리스트가 표시됩니다.</div>';
+  checkedDepts = {};
+  updateSubmitState();
+}
+
+buEl.addEventListener('change', () => {
+  officeEl.innerHTML = '';
+  clientInput.value = ''; clientList.innerHTML = '';
+  resetClientArea();
+
+  if(!buEl.value){
+    officeEl.disabled = true;
+    officeEl.innerHTML = '<option value="">사업부를 먼저 선택하세요</option>';
+    clientInput.disabled = true;
+    clientInput.placeholder = "사무소를 먼저 선택하세요";
+    return;
+  }
+  officeEl.disabled = false;
+  const opt0 = document.createElement('option');
+  opt0.value = ""; opt0.textContent = "선택하세요";
+  officeEl.appendChild(opt0);
+  uniq(HOSPITALS.filter(h => h.bu === buEl.value).map(h => h.office)).sort().forEach(o => {
+    const opt = document.createElement('option');
+    opt.value = o; opt.textContent = o;
+    officeEl.appendChild(opt);
+  });
+  clientInput.disabled = true;
+  clientInput.placeholder = "사무소를 먼저 선택하세요";
+});
+
+officeEl.addEventListener('change', () => {
+  clientInput.value = '';
+  resetClientArea();
+  clientList.innerHTML = '';
+
+  if(!officeEl.value){
+    clientInput.disabled = true;
+    clientInput.placeholder = "사무소를 먼저 선택하세요";
+    return;
+  }
+  clientInput.disabled = false;
+  clientInput.placeholder = "거래처명을 입력/선택하세요";
+  HOSPITALS
+    .filter(h => h.bu === buEl.value && h.office === officeEl.value)
+    .forEach(h => {
+      const opt = document.createElement('option');
+      opt.value = h.name;
+      clientList.appendChild(opt);
+    });
+});
+
+clientInput.addEventListener('input', () => {
+  const match = HOSPITALS.find(h =>
+    h.bu === buEl.value && h.office === officeEl.value && h.name === clientInput.value.trim()
+  );
+  if(match){
+    selectHospital(match);
+  } else {
+    resetClientArea();
+  }
+});
+
+function selectHospital(h){
+  selectedHospital = h;
+  bizNoVal.textContent = h.bizNo || '-';
+  salesCodeVal.textContent = h.salesCode || '-';
+  bizNoCard.classList.remove('wait'); salesCodeCard.classList.remove('wait');
+  checkedDepts = {};
+  SEQ_GROUPS.forEach(g => checkedDepts[g] = new Set());
+  renderSeqCards(h);
+  updateSubmitState();
+}
+
+function statusPillFor(s){
+  const dec = s.dec, jun = s.jun;
+  if(!dec && !jun) return { cls: 'none', text: '미배정' };
+  if(dec && jun && dec !== jun) return { cls: 'changed', text: '담당자 변경' };
+  if(dec && jun && dec === jun) return { cls: 'same', text: '담당자 유지' };
+  return { cls: 'changed', text: '신규 배정' };
+}
+
+function renderSeqCards(h){
+  seqContainer.innerHTML = '';
+  SEQ_GROUPS.forEach(group => {
+    const s = h.seq[group];
+    if(!s || !s.no) return;
+
+    const gc = GROUP_COLOR[group];
+    const hasManager = !!(s.dec || s.jun);
+    const pill = statusPillFor(s);
+
+    const card = document.createElement('div');
+    card.className = 'seq-card' + (hasManager ? '' : ' empty');
+    card.style.setProperty('--grp-color', gc.color);
+    card.style.setProperty('--grp-bg', gc.bg);
+
+    card.innerHTML = `
+      <div class="seq-head">
+        <span class="seq-title">${group}(${s.no})<span class="dept-count" data-role="count">0개 선택</span></span>
+        <span class="status-pill ${pill.cls}">${pill.text}</span>
+      </div>
+      <div class="mgr-line">
+        12월 담당자: <b>${s.dec || '미배정'}</b>
+        <span class="mgr-arrow">→</span>
+        6월(현재) 담당자: <b>${s.jun || '미배정'}</b>
+      </div>
+      <div class="dept-grid" data-group="${group}"></div>
+    `;
+    const grid = card.querySelector('.dept-grid');
+    const countEl = card.querySelector('[data-role="count"]');
+    DEPARTMENTS.forEach(dept => {
+      const id = `dept-${group}-${dept}`.replace(/[^\w가-힣-]/g, '_');
+      const item = document.createElement('label');
+      item.className = 'dept-item';
+      item.setAttribute('for', id);
+      item.innerHTML = `<input type="checkbox" id="${id}" value="${dept}"><span>${dept}</span>`;
+      const cb = item.querySelector('input');
+      cb.addEventListener('change', () => {
+        if(cb.checked){ checkedDepts[group].add(dept); item.classList.add('checked'); }
+        else { checkedDepts[group].delete(dept); item.classList.remove('checked'); }
+        countEl.textContent = checkedDepts[group].size + '개 선택';
+        updateSubmitState();
+      });
+      grid.appendChild(item);
+    });
+    seqContainer.appendChild(card);
+  });
+}
+
+function updateSubmitState(){
+  const hasClient = !!selectedHospital;
+  const hasAnyCheck = Object.values(checkedDepts).some(set => set && set.size > 0);
+  submitBtn.disabled = !(hasClient && hasAnyCheck);
+}
+
+submitBtn.addEventListener('click', async () => {
+  if(!selectedHospital) return;
+
+  const rows = SEQ_GROUPS
+    .map(group => {
+      const s = selectedHospital.seq[group];
+      const depts = [...(checkedDepts[group] || [])];
+      if(!s || !s.no || depts.length === 0) return null;
+      return {
+        group, seq: s.no,
+        mgrDec: s.dec || '', mgrJun: s.jun || '',
+        departments: depts
+      };
+    })
+    .filter(Boolean);
+
+  if(rows.length === 0){
+    statusEl.textContent = '진료과를 1개 이상 선택해주세요.';
+    statusEl.className = 'err';
+    return;
+  }
+
+  const payload = {
+    submittedAt: new Date().toISOString(),
+    submitter: submitterEl.value.trim(),
+    businessUnit: selectedHospital.bu,
+    office: selectedHospital.office,
+    clientName: selectedHospital.name,
+    bizNo: selectedHospital.bizNo,
+    salesCode: selectedHospital.salesCode,
+    rows
+  };
+
+  submitBtn.disabled = true;
+  statusEl.textContent = '제출 중...';
+  statusEl.className = '';
+
+  try{
+    if(GAS_WEB_APP_URL.includes('여기에_배포된_웹앱_ID를_넣으세요')){
+      throw new Error('GAS_WEB_APP_URL이 아직 설정되지 않았습니다.');
+    }
+    // Apps Script 웹앱은 CORS 응답 헤더를 주지 않는 경우가 많아 no-cors로 전송합니다.
+    // (응답 내용은 읽을 수 없지만, 네트워크 오류 없이 끝나면 서버에는 정상 도달합니다.)
+    await fetch(GAS_WEB_APP_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    });
+    statusEl.textContent = '제출이 완료되었습니다. 감사합니다!';
+    statusEl.className = 'ok';
+  } catch(err){
+    statusEl.textContent = '제출 실패: ' + err.message;
+    statusEl.className = 'err';
+    submitBtn.disabled = false;
+  }
+});
+
+initBu();
+</script>
+</body>
+</html>
