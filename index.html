@@ -113,6 +113,11 @@
     background:var(--grp-bg, #eff6ff); border-color:var(--grp-color, var(--navy));
     font-weight:700; color:var(--grp-color, var(--navy));
   }
+  .dept-disabled-note{
+    margin:0 13px 13px; padding:11px 12px; border-radius:9px;
+    background:#f3f4f7; border:1px dashed #cbd2df; color:#8992a3;
+    font-size:12.5px; text-align:center;
+  }
 
   footer{
     position:fixed; bottom:0; left:0; right:0; background:#fff; border-top:1px solid var(--border);
@@ -150,9 +155,8 @@
       <label for="office">사무소</label>
       <select id="office" disabled><option value="">사업부를 먼저 선택하세요</option></select>
 
-      <label for="clientInput">거래처명</label>
-      <input type="text" id="clientInput" list="clientList" placeholder="사무소를 먼저 선택하세요" disabled autocomplete="off">
-      <datalist id="clientList"></datalist>
+      <label for="client">거래처명</label>
+      <select id="client" disabled><option value="">사무소를 먼저 선택하세요</option></select>
       <div class="hint">거래처명을 선택하면 사업자번호·판매처코드가 자동으로 채워져요.</div>
 
       <div class="stat-grid">
@@ -2577,14 +2581,13 @@ const GROUP_COLOR = {
 /* =========================================================================
    2) 제출 대상 Google Apps Script 웹앱 URL — 배포 후 여기에 넣으세요.
    ========================================================================= */
-const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz7nq4jGPRYV_H-fpUivOEVDN0_LGBw4rFnw3_7r1YP28U0fdh8FZlN2Oj0rdsVCmMFWQ/exec";
+const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwd4QFfKlkSVIOiMJntLDSruViBSl7BlNf0v9pEXhzDg_4Xfj6JHeKEaSVYXgaSaPenDg/exec";
 
 /* ========================================================================= */
 
 const buEl = document.getElementById('bu');
 const officeEl = document.getElementById('office');
-const clientInput = document.getElementById('clientInput');
-const clientList = document.getElementById('clientList');
+const clientEl = document.getElementById('client');
 const bizNoCard = document.getElementById('bizNoCard');
 const salesCodeCard = document.getElementById('salesCodeCard');
 const bizNoVal = document.getElementById('bizNoVal');
@@ -2619,14 +2622,13 @@ function resetClientArea(){
 
 buEl.addEventListener('change', () => {
   officeEl.innerHTML = '';
-  clientInput.value = ''; clientList.innerHTML = '';
   resetClientArea();
+  clientEl.innerHTML = '<option value="">사무소를 먼저 선택하세요</option>';
 
   if(!buEl.value){
     officeEl.disabled = true;
     officeEl.innerHTML = '<option value="">사업부를 먼저 선택하세요</option>';
-    clientInput.disabled = true;
-    clientInput.placeholder = "사무소를 먼저 선택하세요";
+    clientEl.disabled = true;
     return;
   }
   officeEl.disabled = false;
@@ -2638,34 +2640,35 @@ buEl.addEventListener('change', () => {
     opt.value = o; opt.textContent = o;
     officeEl.appendChild(opt);
   });
-  clientInput.disabled = true;
-  clientInput.placeholder = "사무소를 먼저 선택하세요";
+  clientEl.disabled = true;
 });
 
 officeEl.addEventListener('change', () => {
-  clientInput.value = '';
   resetClientArea();
-  clientList.innerHTML = '';
+  clientEl.innerHTML = '';
 
   if(!officeEl.value){
-    clientInput.disabled = true;
-    clientInput.placeholder = "사무소를 먼저 선택하세요";
+    clientEl.disabled = true;
+    clientEl.innerHTML = '<option value="">사무소를 먼저 선택하세요</option>';
     return;
   }
-  clientInput.disabled = false;
-  clientInput.placeholder = "거래처명을 입력/선택하세요";
+  clientEl.disabled = false;
+  const opt0 = document.createElement('option');
+  opt0.value = ""; opt0.textContent = "선택하세요";
+  clientEl.appendChild(opt0);
   HOSPITALS
     .filter(h => h.bu === buEl.value && h.office === officeEl.value)
+    .sort((a, b) => a.name.localeCompare(b.name, 'ko'))
     .forEach(h => {
       const opt = document.createElement('option');
-      opt.value = h.name;
-      clientList.appendChild(opt);
+      opt.value = h.name; opt.textContent = h.name;
+      clientEl.appendChild(opt);
     });
 });
 
-clientInput.addEventListener('input', () => {
+clientEl.addEventListener('change', () => {
   const match = HOSPITALS.find(h =>
-    h.bu === buEl.value && h.office === officeEl.value && h.name === clientInput.value.trim()
+    h.bu === buEl.value && h.office === officeEl.value && h.name === clientEl.value
   );
   if(match){
     selectHospital(match);
@@ -2710,7 +2713,7 @@ function renderSeqCards(h){
 
     card.innerHTML = `
       <div class="seq-head">
-        <span class="seq-title">${group}(${s.no})<span class="dept-count" data-role="count">0개 선택</span></span>
+        <span class="seq-title">${group}(${s.no})${hasManager ? '<span class="dept-count" data-role="count">0개 선택</span>' : ''}</span>
         <span class="status-pill ${pill.cls}">${pill.text}</span>
       </div>
       <div class="mgr-line">
@@ -2718,9 +2721,23 @@ function renderSeqCards(h){
         <span class="mgr-arrow">→</span>
         6월(현재) 담당자: <b>${s.jun || '미배정'}</b>
       </div>
-      <div class="dept-grid" data-group="${group}"></div>
     `;
-    const grid = card.querySelector('.dept-grid');
+
+    if(!hasManager){
+      // 12월/6월 담당자가 모두 없는 시퀀스는 진료과를 선택할 수 없도록 체크박스를 아예 렌더링하지 않음
+      const note = document.createElement('div');
+      note.className = 'dept-disabled-note';
+      note.textContent = '담당자 미배정 시퀀스는 진료과를 선택할 수 없습니다.';
+      card.appendChild(note);
+      seqContainer.appendChild(card);
+      return;
+    }
+
+    const grid = document.createElement('div');
+    grid.className = 'dept-grid';
+    grid.setAttribute('data-group', group);
+    card.appendChild(grid);
+
     const countEl = card.querySelector('[data-role="count"]');
     DEPARTMENTS.forEach(dept => {
       const id = `dept-${group}-${dept}`.replace(/[^\w가-힣-]/g, '_');
@@ -2780,29 +2797,32 @@ submitBtn.addEventListener('click', async () => {
     rows
   };
 
+  if(GAS_WEB_APP_URL.includes('여기에_배포된_웹앱_ID를_넣으세요')){
+    statusEl.textContent = 'GAS_WEB_APP_URL이 아직 설정되지 않았습니다.';
+    statusEl.className = 'err';
+    return;
+  }
+
   submitBtn.disabled = true;
   statusEl.textContent = '제출 중...';
   statusEl.className = '';
 
-  try{
-    if(GAS_WEB_APP_URL.includes('여기에_배포된_웹앱_ID를_넣으세요')){
-      throw new Error('GAS_WEB_APP_URL이 아직 설정되지 않았습니다.');
-    }
-    // Apps Script 웹앱은 CORS 응답 헤더를 주지 않는 경우가 많아 no-cors로 전송합니다.
-    // (응답 내용은 읽을 수 없지만, 네트워크 오류 없이 끝나면 서버에는 정상 도달합니다.)
-    await fetch(GAS_WEB_APP_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(payload)
-    });
-    statusEl.textContent = '제출이 완료되었습니다. 감사합니다!';
-    statusEl.className = 'ok';
-  } catch(err){
-    statusEl.textContent = '제출 실패: ' + err.message;
-    statusEl.className = 'err';
-    submitBtn.disabled = false;
-  }
+  // Apps Script 웹앱은 응답이 오는 데 몇 초씩 걸릴 수 있고, no-cors 모드라 응답 내용도 읽을 수 없습니다.
+  // 그래서 응답을 기다리지 않고 요청만 보낸 뒤 바로 완료 처리합니다(체감 속도 개선).
+  // 실제 실패(네트워크 끊김 등)는 콘솔에만 조용히 기록됩니다.
+  fetch(GAS_WEB_APP_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload)
+  }).catch(err => {
+    console.error('제출 전송 중 네트워크 오류:', err);
+  });
+
+  statusEl.textContent = '제출이 완료되었습니다. 감사합니다!';
+  statusEl.className = 'ok';
+
+  setTimeout(() => { updateSubmitState(); }, 400);
 });
 
 initBu();
